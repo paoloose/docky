@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic -g
-CLIBS = -lm
+CFLAGS = -std=c11 -Wall -Wextra -Werror -pedantic -g -I./include
+CLIBS =
 
 BIN = docky
 OUTDIR = dist
