@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
 
 #define nil ((void*)0)
 
@@ -11,14 +12,14 @@ typedef struct {
 
 #define MAX_ERROR_LENGTH 256
 
+static error global_error = {.msg = NULL};
+static char global_error_msg[MAX_ERROR_LENGTH] = {0};
+
 // Workaround to create a global error so we don't need to allocate
 // and free memory for every error we create.
 //
 // Passing NULL to 'format' means that the error exists but has no name.
 static inline error* create_error(char* format, ...) {
-    static error global_error = {.msg = NULL};
-    static char global_error_msg[MAX_ERROR_LENGTH] = {0};
-
     if (format != NULL) {
         va_list args;
         va_start(args, format);
@@ -30,7 +31,18 @@ static inline error* create_error(char* format, ...) {
     }
 
     global_error.msg = global_error_msg;
+    return &global_error;
+}
 
+// Varadic version of create_error
+static inline error* vcreate_error(char* format, va_list args) {
+    if (format != NULL) {
+        vsnprintf(global_error_msg, sizeof(global_error_msg), format, args);
+    }
+    else {
+        global_error_msg[0] = '\0';
+    }
+    global_error.msg = global_error_msg;
     return &global_error;
 }
 
@@ -77,9 +89,21 @@ static inline result_void as_result(int c_result, char* format, ...) {
     return result;
 }
 
+// Varadic version of as_result
+static inline result_void vas_result(int c_result, char* format, va_list args) {
+    result_void result = {nil};
+    if (c_result != 0) {
+        result.err = vcreate_error(format, args);
+    }
+    return result;
+}
+
 // Utility to 'must' c results (integers) with a format string
 static inline void must_c_int(int c_result, char* format, ...) {
-    must_void(as_result(c_result, format));
+    va_list args;
+    va_start(args, format);
+    must_void(vas_result(c_result, format, args));
+    va_end(args);
 }
 
 // std=c11 allows us to simulate function overload with _Generic
@@ -95,10 +119,20 @@ static inline void must_c_int(int c_result, char* format, ...) {
     int: must_c_int \
 )(res __VA_OPT__(,) __VA_ARGS__)
 
-#define FIRST(A, ...) A
-
 // The actual result<type> definition
 // Note that to start using result<type> you must previously define it
 // with `define_result`. Likewise, to use the must<type> function, you must
 // add its definition to the must(x) Generic macro.
 #define result(TYPE) result_##TYPE
+
+// Utility functions to use with must()
+
+static inline int be_legit(void* pointer) {
+    if (pointer != nil) return 0;
+    return 1;
+}
+
+static inline int be_non_minus_one(int value) {
+    if (value != -1) return 0;
+    return 1;
+}
