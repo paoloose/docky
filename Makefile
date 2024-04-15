@@ -7,6 +7,7 @@ OUTDIR = dist
 SRCDIR = src
 SRC = $(wildcard $(SRCDIR)/*.c)
 OBJ = $(SRC:$(SRCDIR)/%.c=$(OUTDIR)/%.o)
+DEPS = $(wildcard include/*.h)
 
 $(shell mkdir -p $(OUTDIR))
 
@@ -17,7 +18,7 @@ $(shell mkdir -p $(OUTDIR))
 $(OUTDIR)/$(BIN): $(OBJ)
 	$(CC) -o $@ $^ $(CLIBS)
 
-$(OUTDIR)/%.o: $(SRCDIR)/%.c
+$(OUTDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 .PHONY: clean
