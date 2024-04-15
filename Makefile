@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra -Werror -pedantic -g -I./include
+CFLAGS = -std=c11 -Wall -Wextra -Werror -g -I./include
 CLIBS =
 
 BIN = docky
