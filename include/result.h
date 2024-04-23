@@ -54,8 +54,11 @@ static inline error* vcreate_error(char* format, va_list args) {
 static inline void must_##NAME(result_##NAME result) { \
     if (result.err != nil) { \
         if (strlen(result.err->msg) > 0) { \
-            DOCKY_DEBUG("must() failed: %s", result.err->msg); \
+            DOCKY_DEBUG("%smust() failed:%s %s", DOCKY_RED, DOCKY_RESET, result.err->msg); \
             fprintf(stderr, "Error: %s\n", result.err->msg); \
+        } \
+        else { \
+            DOCKY_DEBUG("%smust() failed:%s %s", DOCKY_RED, DOCKY_RESET, "<no message>"); \
         } \
         exit(69); \
     } \
