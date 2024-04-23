@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -Werror -g -I./include
-CLIBS =
+CLIBS = -lcap
 
 BIN = docky
 OUTDIR = dist
@@ -17,6 +17,7 @@ $(shell mkdir -p $(OUTDIR))
 
 $(OUTDIR)/$(BIN): $(OBJ)
 	$(CC) -o $@ $^ $(CLIBS)
+	sudo setcap cap_sys_admin+ep $@
 
 $(OUTDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
