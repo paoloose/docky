@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
+#include "debug.h"
 
 #define nil ((void*)0)
 
@@ -52,6 +54,7 @@ static inline error* vcreate_error(char* format, va_list args) {
 static inline void must_##NAME(result_##NAME result) { \
     if (result.err != nil) { \
         if (strlen(result.err->msg) > 0) { \
+            DOCKY_DEBUG("must() failed: %s", result.err->msg); \
             fprintf(stderr, "Error: %s\n", result.err->msg); \
         } \
         exit(69); \
@@ -65,6 +68,18 @@ typedef struct { \
     TYPE val; \
 } result_##STRUCT_NAME; \
 create_must(STRUCT_NAME)
+
+#define return_if_err(RESULT) \
+    if (RESULT.err != nil) return RESULT;
+
+#define return_err(TYPE, ...) \
+    result(TYPE) r = {0}; \
+    r.err = create_error(__VA_ARGS__); \
+    return r;
+
+#define return_ok \
+    result(void) r = {0}; \
+    return r;
 
 // Special void result with no value
 typedef struct {
@@ -136,4 +151,25 @@ static inline int be_legit(void* pointer) {
 static inline int be_non_minus_one(int value) {
     if (value != -1) return 0;
     return 1;
+}
+
+static inline int not_return(int call) {
+    (void)call;
+    return 1;
+}
+
+static inline int be_equal(int call, int val) {
+    if (call != val) return 1;
+    return 0;
+}
+
+static inline int be_non_zero(int value) {
+    if (value != 0) return 1;
+    return 0;
+}
+
+// Created to be chain like so failed_to(be_equal(...))
+static inline bool failed_to(int to_evaluate) {
+    if (to_evaluate != 0) return true;
+    return false;
 }
