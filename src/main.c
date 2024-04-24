@@ -37,10 +37,10 @@ int main(int argc, char** argv) {
 
     must(has_minimum_linux_version(3, 10));
 
-    // socket[0] will be used by the child process to communicate with the parent.
+    // socket[1] will be used by the child process to communicate with the parent.
     int sockets[2] = {0};
 
-    must(socketpair(AF_LOCAL, SOCK_SEQPACKET, 0, sockets), "Couldn't create socket pair");
+    must(socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sockets), "Couldn't create socket pair");
     must(fcntl(sockets[0], F_SETFD, FD_CLOEXEC), "fcntl() failed");
 
     #define STACK_SIZE 1024 * 1024
@@ -50,12 +50,18 @@ int main(int argc, char** argv) {
     must(be_legit(stack), "malloc() failed");
 
     int clone_flags =
-        CLONE_NEWNS |
-        CLONE_NEWCGROUP |
+        CLONE_NEWNS | // Filesystem namespace
+        // CLONE_NEWCGROUP |
         CLONE_NEWPID |
-        CLONE_NEWIPC |
-        CLONE_NEWNET |
-        CLONE_NEWUTS;
+        // CLONE_NEWIPC |
+        // CLONE_NEWNET |
+        // CLONE_PARENT | // will share the parent... (not what we want)
+        CLONE_NEWUTS; // UTS namespace isolation for hostname
+
+    if (docky_args.wait_for_exit) {
+        // So the parent is able to wait for the child process to exit
+        clone_flags = clone_flags | SIGCHLD;
+    }
 
     if (docky_args.stdin_attached) {
         // clone_flags |=
@@ -67,24 +73,26 @@ int main(int argc, char** argv) {
         .uid = docky_args.uid,
         .gid = docky_args.gid,
         .hostname = docky_args.hostname,
-        .socket_fd = sockets[0],
+        .socket_fd = sockets[1],
     };
+
+    // close and zero out the child socket if something breaks
+    close(sockets[1]);
+    sockets[1] = 0;
 
     pid_t container_pid = clone(
         container_process,
         stack + STACK_SIZE,
-        clone_flags | SIGCHLD,
+        clone_flags,
         &container_conf
     );
 
     must(be_non_minus_one(container_pid), "clone() failed: %s", strerror(errno));
 
     if (docky_args.wait_for_exit) {
+        printf("waiting for child...");
         must(waitpid(container_pid, NULL, 0), "couldn't waitpid() on container");
     }
-
-    close(sockets[1]);
-    sockets[1] = 0;
 
     DOCKY_DEBUG("Exiting parent process");
 

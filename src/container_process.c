@@ -13,7 +13,9 @@ result(void) do_mounts() {
     return r;
 }
 
-result(void) userns(struct container_conf* config) {
+// TODO: how to limit cgroups
+
+result(void) setup_userns(struct container_conf* config) {
     DOCKY_DEBUG("trying a user namespace...");
 
     // We need to unshare the user namespace so we can drop privileges
@@ -60,7 +62,7 @@ result(void) userns(struct container_conf* config) {
 #include <sys/prctl.h>
 #include <sys/capability.h>
 
-result(void) capabilities() {
+result(void) setup_capabilities() {
     DOCKY_DEBUG("Dropping capabilities");
 
     int drop_caps[] = {
@@ -104,19 +106,33 @@ result(void) capabilities() {
     return_ok;
 }
 
+// TODO
+// - understand how to change cgroups programatically instead of using the filesystem interface
+// - setup namespaces
+// - setup capabilities
+// - do i really need sockets?
+// - figure out the rest
+
 int container_process(void* __conf) {
     struct container_conf* config = __conf;
-
+    DOCKY_DEBUG("Running child with PID %d", (int)getpid());
 
     must(sethostname(config->hostname, strlen(config->hostname)), "sethostname() failed");
     // mounts
-    // userns
-    must(userns(config));
-    // capabilities
-    must(capabilities());
-    // syscalls
-    must(close(config->socket_fd), "close() failed");
+        //
+    // namespaces (kernel objects visible to the process tree)
+        // must(setup_userns(config));
+    // capabilities (what uid 0 can do)
+        // must(setup_capabilities());
+    // cgroups (limiting resource use)
 
+    // syscalls
+        // must(close(config->socket_fd), "close() failed");
+
+    must(chroot("./rootfs"), "chroot() to rootfs failed");
+    must(chdir("/"), "failed to chdir to new rootfs");
+
+    DOCKY_DEBUG("Executing %s\n", config->argv[0]);
     must(not_return(execve(config->argv[0], config->argv, NULL)), "execve() failed");
     return 0;
 }
