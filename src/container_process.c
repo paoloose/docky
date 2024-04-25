@@ -129,8 +129,8 @@ int container_process(void* __conf) {
     // syscalls
         // must(close(config->socket_fd), "close() failed");
 
-    must(chroot("./rootfs"), "chroot() to rootfs failed");
-    must(chdir("/"), "failed to chdir to new rootfs");
+    must(chroot(config->rootfs), "chroot() to rootfs failed");
+    must(chdir(config->workdir), "failed to chdir to new rootfs");
 
     DOCKY_DEBUG("Executing %s\n", config->argv[0]);
     must(not_return(execve(config->argv[0], config->argv, NULL)), "execve() failed");

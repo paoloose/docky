@@ -12,7 +12,10 @@ struct docky_args {
     char* hostname;
     bool stdin_attached;
     bool wait_for_exit;
+    int limit_memory_mb;
+    double limit_cpu_mb;
     char* workdir;
+    char* rootfs;
 };
 
 #include <sys/socket.h> // socketpair
@@ -29,10 +32,13 @@ int main(int argc, char** argv) {
     struct docky_args docky_args = {
         .uid = 0,
         .gid = 0,
+        .limit_memory_mb = 1000,
+        .limit_cpu_mb = 1,
         .hostname = "docky",
         .stdin_attached = false,
         .wait_for_exit = true,
         .workdir = "/",
+        .rootfs = "./rootfs",
     };
 
     must(has_minimum_linux_version(3, 10));
@@ -73,6 +79,12 @@ int main(int argc, char** argv) {
         .uid = docky_args.uid,
         .gid = docky_args.gid,
         .hostname = docky_args.hostname,
+        .limits = {
+            .cpu_mb = docky_args.limit_memory_mb,
+            .memory_mb = docky_args.limit_memory_mb,
+        },
+        .rootfs = docky_args.rootfs,
+        .workdir = docky_args.workdir,
         .socket_fd = sockets[1],
     };
 
