@@ -21,7 +21,6 @@ And run the container
 
 ```sh
 make
-sudo setcap cap_sys_admin+ep ./dist/docky
 ./dist/docky /bin/sh
 ```
 
