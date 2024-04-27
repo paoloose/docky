@@ -106,6 +106,28 @@ result(void) setup_capabilities() {
     return_ok;
 }
 
+#include <sys/mount.h>
+
+result(void) setup_filesystem(char* rootfs, char* workdir) {
+    // Make mount namespace private to prevent propagation to host
+    // See man 2 mount
+    //    If mountflags includes one of MS_SHARED, MS_PRIVATE,  MS_SLAVE,  or  MS_UNBINDABLE  (all
+    //    available  since  Linux  2.6.15),  then  the  propagation  type  of an existing mount is
+    //    changed.  If more than one of these flags is specified, an error results.
+    // The need of this call before unsharing CLONE_NEWNS was also discussed in <https://go-review.googlesource.com/c/go/+/38471>
+    return_if_err(as_result(mount(0, "/", 0, MS_PRIVATE | MS_REC, ""), "failed to make mount namespace private"));
+
+    // And now we can properly unshare the mount namespace with the host
+    must(unshare(CLONE_NEWNS), "failed to unshare mount namespace from host");
+
+    // And chroot to our new filesystem root
+    return_if_err(as_result(chroot(rootfs), "chroot() to rootfs failed"));
+    return_if_err(as_result(chdir(workdir), "failed to chdir to new rootfs"));
+
+    return_if_err(as_result(mount("proc", "/proc", "proc", 0, ""), "unable to mount proc filesystem"));
+    return_ok;
+}
+
 // TODO
 // - understand how to change cgroups programatically instead of using the filesystem interface
 // - setup namespaces
@@ -118,6 +140,9 @@ int container_process(void* __conf) {
     DOCKY_DEBUG("Running child with PID %d", (int)getpid());
 
     must(sethostname(config->hostname, strlen(config->hostname)), "sethostname() failed");
+
+    // TODO: settings up users
+
     // mounts
         //
     // namespaces (kernel objects visible to the process tree)
@@ -129,10 +154,10 @@ int container_process(void* __conf) {
     // syscalls
         // must(close(config->socket_fd), "close() failed");
 
-    must(chroot(config->rootfs), "chroot() to rootfs failed");
-    must(chdir(config->workdir), "failed to chdir to new rootfs");
+    must(setup_filesystem(config->rootfs, config->workdir));
 
     DOCKY_DEBUG("Executing %s\n", config->argv[0]);
+    // TODO: handle non existing commands, make errors nicer
     must(not_return(execve(config->argv[0], config->argv, NULL)), "execve() failed");
     return 0;
 }
