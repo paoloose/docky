@@ -4,6 +4,7 @@
 
 #include "container_process.h"
 #include "result.h"
+#include "config.h"
 #include "linux_version.h"
 
 struct docky_args {
@@ -49,9 +50,7 @@ int main(int argc, char** argv) {
     must(socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sockets), "Couldn't create socket pair");
     must(fcntl(sockets[0], F_SETFD, FD_CLOEXEC), "fcntl() failed");
 
-    #define STACK_SIZE 1024 * 1024
-
-    char* stack = malloc(STACK_SIZE);
+    char* stack = malloc(CONTAINER_STACK_SIZE);
 
     must(be_legit(stack), "malloc() failed");
 
@@ -96,7 +95,7 @@ int main(int argc, char** argv) {
 
     pid_t container_pid = clone(
         container_process,
-        stack + STACK_SIZE,
+        stack + CONTAINER_STACK_SIZE,
         clone_flags,
         &container_conf
     );
