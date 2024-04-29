@@ -2,14 +2,10 @@
 
 Docky isolates linux processes 🐢
 
+It achieves process sandboxing by using Linux namespaces, capabilities, cgroups,
+and chroot to create lightweight containers similar to Docker.
+
 ## Usage
-
-Install dependencies
-
-```sh
-# To manage linux capabilities(7)
-sudo apt install libcap-dev
-```
 
 Pull the root filesystem image (currently using Alpine's minirootfs)
 
@@ -31,6 +27,7 @@ make
   [needed](https://kubernetes.io/docs/concepts/architecture/cgroups/#requirements).
 - It depends on an external filesystem to be downloaded and mounted.
   See `pull_rootfs.sh`
+- Rootless containers by using the `CLONE_NEWUSER`
 
 ## Acknowledgements
 

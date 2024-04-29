@@ -3,8 +3,10 @@
 #include <string.h>
 #include <sched.h>
 #include <grp.h>
+#include <sys/stat.h>
 #include "container_process.h"
 #include "result.h"
+#include "config.h"
 #include "debug.h"
 
 result(void) do_mounts() {
@@ -12,8 +14,6 @@ result(void) do_mounts() {
     result(void) r = {0};
     return r;
 }
-
-// TODO: how to limit cgroups
 
 result(void) setup_userns(struct container_conf* config) {
     DOCKY_DEBUG("trying a user namespace...");
@@ -109,6 +109,7 @@ result(void) setup_capabilities() {
 #include <sys/mount.h>
 
 result(void) setup_filesystem(char* rootfs, char* workdir) {
+    DOCKY_DEBUG("Unsharing mount namespace");
     // Make mount namespace private to prevent propagation to host
     // See man 2 mount
     //    If mountflags includes one of MS_SHARED, MS_PRIVATE,  MS_SLAVE,  or  MS_UNBINDABLE  (all
@@ -120,16 +121,22 @@ result(void) setup_filesystem(char* rootfs, char* workdir) {
     // And now we can properly unshare the mount namespace with the host
     must(unshare(CLONE_NEWNS), "failed to unshare mount namespace from host");
 
+    DOCKY_DEBUG("Changing root to %s", rootfs);
+
     // And chroot to our new filesystem root
     return_if_err(as_result(chroot(rootfs), "chroot() to rootfs failed"));
     return_if_err(as_result(chdir(workdir), "failed to chdir to new rootfs"));
 
+    DOCKY_DEBUG("Mounting /proc filesystem");
     return_if_err(as_result(mount("proc", "/proc", "proc", 0, ""), "unable to mount proc filesystem"));
     return_ok;
 }
 
+result(void) setup_cgroups() {
+    return_ok;
+}
+
 // TODO
-// - understand how to change cgroups programatically instead of using the filesystem interface
 // - setup namespaces
 // - setup capabilities
 // - do i really need sockets?
@@ -137,7 +144,7 @@ result(void) setup_filesystem(char* rootfs, char* workdir) {
 
 int container_process(void* __conf) {
     struct container_conf* config = __conf;
-    DOCKY_DEBUG("Running child with PID %d", (int)getpid());
+    DOCKY_DEBUG("Starting container process (PID=%d)", (int)getpid());
 
     must(sethostname(config->hostname, strlen(config->hostname)), "sethostname() failed");
 

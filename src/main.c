@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
         // Do not share "mount namespace", this way mounts made by the children won't be shown to the parent
         // https://stackoverflow.com/q/22889241/18114046
         CLONE_NEWNS |
+        CLONE_NEWUSER |
         // CLONE_NEWCGROUP |
         CLONE_NEWPID |
         // CLONE_NEWIPC |
