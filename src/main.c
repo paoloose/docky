@@ -42,7 +42,9 @@ int main(int argc, char** argv) {
         .rootfs = "./rootfs",
     };
 
-    must(has_minimum_linux_version(3, 10));
+    // Linux 5.8 is needed for cgroups v2
+    // <https://kubernetes.io/docs/concepts/architecture/cgroups/#requirements>
+    must(has_minimum_linux_version(5, 8));
 
     // socket[1] will be used by the child process to communicate with the parent.
     int sockets[2] = {0};
